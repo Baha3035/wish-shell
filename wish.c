@@ -10,7 +10,7 @@
 
 int main(int argc, char* argv[]){
     char error_message[] = "An error has occurred\n";
-    char *PATH[MAX_PATHS];
+    char *PATH[MAX_PATHS] = {"/bin/"};
     // strcat(PATH, "/");
     char buffer[BUFFER_SIZE];
 
@@ -42,8 +42,14 @@ int main(int argc, char* argv[]){
             exit(0);
         } else if (strcmp(args[0], "cd") == 0) {
             // Change directory
-            if (arg_count == 2 && chdir(args[1]) != 0) {
+            if (arg_count != 2) {
+                // Invalid number of arguments
                 write(STDERR_FILENO, error_message, strlen(error_message));
+            } else {
+                if (chdir(args[1]) != 0) {
+                    // chdir failed
+                    write(STDERR_FILENO, error_message, strlen(error_message));
+                }
             }
         } else if (strcmp(args[0], "path") == 0) {
             if (arg_count == 1) {
