@@ -8,6 +8,37 @@
 #define MAX_PATH_LENGTH 256
 #define MAX_ARGS 32
 
+void execute_command(char *args[], char *PATH[], char *error_message) {
+    pid_t pid = fork();
+
+    if (pid < 0){
+        // Fork failed
+        perror("fork");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0){
+        // Child process
+        int path_success = 0;
+        for (int j = 0; j < MAX_PATHS; j++) {
+            char command_path[MAX_PATH_LENGTH];
+            snprintf(command_path, MAX_PATH_LENGTH, "%s%s", PATH[j], args[0]);
+            if (access(command_path, X_OK) == 0){
+                path_success = 1;
+                execv(command_path, args);
+                // If execv returns it must've failed
+                perror("execv");
+                exit(EXIT_FAILURE);
+            }
+        }
+        if (!path_success) {
+            write(STDERR_FILENO, error_message, strlen(error_message));
+        }
+    } else {
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0);
+    }
+}
+
 int main(int argc, char* argv[]){
     char error_message[] = "An error has occurred\n";
     char *PATH[MAX_PATHS] = {"/bin/"};
@@ -76,34 +107,7 @@ int main(int argc, char* argv[]){
                     }
                 }
             } else {
-                pid_t pid = fork();
-
-                if (pid < 0){
-                    // Fork failed
-                    perror("fork");
-                    exit(EXIT_FAILURE);
-                } else if (pid == 0){
-                    // Child process
-                    int path_success = 0;
-                    for (int j = 0; j < MAX_PATHS; j++) {
-                        char command_path[MAX_PATH_LENGTH];
-                        snprintf(command_path, MAX_PATH_LENGTH, "%s%s", PATH[j], args[0]);
-                        if (access(command_path, X_OK) == 0){
-                            path_success = 1;
-                            execv(command_path, args);
-                            // If execv returns it must've failed
-                            perror("execv");
-                            exit(EXIT_FAILURE);
-                        }
-                    }
-                    if (!path_success) {
-                        write(STDERR_FILENO, error_message, strlen(error_message));
-                    }
-                } else {
-                    // Parent process
-                    int status;
-                    waitpid(pid, &status, 0);
-                }
+                execute_command(args, PATH, error_message);
             }
             printf("wish> ");
         }
@@ -169,34 +173,7 @@ int main(int argc, char* argv[]){
                     }
                 }
             } else {
-                pid_t pid = fork();
-
-                if (pid < 0){
-                    // Fork failed
-                    perror("fork");
-                    exit(EXIT_FAILURE);
-                } else if (pid == 0){
-                    // Child process
-                    int path_success = 0;
-                    for (int j = 0; j < MAX_PATHS; j++) {
-                        char command_path[MAX_PATH_LENGTH];
-                        snprintf(command_path, MAX_PATH_LENGTH, "%s%s", PATH[j], args[0]);
-                        if (access(command_path, X_OK) == 0){
-                            path_success = 1;
-                            execv(command_path, args);
-                            // If execv returns it must've failed
-                            perror("execv");
-                            exit(EXIT_FAILURE);
-                        }
-                    }
-                    if (!path_success) {
-                        write(STDERR_FILENO, error_message, strlen(error_message));
-                    }
-                } else {
-                    // Parent process
-                    int status;
-                    waitpid(pid, &status, 0);
-                }
+                execute_command(args, PATH, error_message);
             }
         }
     }
