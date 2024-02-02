@@ -97,8 +97,7 @@ int main(int argc, char* argv[]){
                         }
                     }
                     if (!path_success) {
-                        perror("command not found");
-                        exit(EXIT_FAILURE);
+                        write(STDERR_FILENO, error_message, strlen(error_message));
                     }
                 } else {
                     // Parent process
@@ -191,8 +190,7 @@ int main(int argc, char* argv[]){
                         }
                     }
                     if (!path_success) {
-                        perror("command not found");
-                        exit(EXIT_FAILURE);
+                        write(STDERR_FILENO, error_message, strlen(error_message));
                     }
                 } else {
                     // Parent process
