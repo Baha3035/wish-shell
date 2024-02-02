@@ -40,7 +40,11 @@ int main(int argc, char* argv[]){
             }
 
             if (strcmp(args[0], "exit") == 0) {
-                exit(0);
+                if (arg_count > 1) {
+                    write(STDERR_FILENO, error_message, strlen(error_message));
+                } else {
+                    exit(0);
+                }
             } else if (strcmp(args[0], "cd") == 0) {
                 // Change directory
                 if (arg_count != 2) {
@@ -130,7 +134,11 @@ int main(int argc, char* argv[]){
             }
 
             if (strcmp(args[0], "exit") == 0) {
-                exit(0);
+                if (arg_count > 1) {
+                    write(STDERR_FILENO, error_message, strlen(error_message));
+                } else {
+                    exit(0);
+                }
             } else if (strcmp(args[0], "cd") == 0) {
                 // Change directory
                 if (arg_count != 2) {
