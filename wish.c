@@ -31,6 +31,7 @@ void execute_command(char *args[], char *PATH[], char *error_message) {
         }
         if (!path_success) {
             write(STDERR_FILENO, error_message, strlen(error_message));
+            exit(0);
         }
     } else {
         // Parent process
