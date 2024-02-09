@@ -43,7 +43,6 @@ void execute_command(char *args[], char *PATH[], char *error_message) {
 int main(int argc, char* argv[]){
     char error_message[] = "An error has occurred\n";
     char *PATH[MAX_PATHS] = {"/bin/"};
-    // strcat(PATH, "/");
     char buffer[BUFFER_SIZE];
 
     if (argc == 1){
@@ -58,15 +57,12 @@ int main(int argc, char* argv[]){
             // Remove newline character from the end of the input
             buffer[strcspn(buffer, "\n")] = '\0';
 
-            // printf("buffer %s\n", buffer);
-
             char* token;
             char* args[MAX_ARGS] = {NULL}; // Initialize args with NULL pointers
             int arg_count = 0;
             // strtok() returns a pointer
             token = strtok(buffer, " ");
             while (token != NULL && arg_count < MAX_ARGS - 1) {
-                // printf("token %s\n", token);
                 args[arg_count++] = token;
                 token = strtok(NULL, " ");
             }
@@ -90,6 +86,9 @@ int main(int argc, char* argv[]){
                 }
             } else if (strcmp(args[0], "path") == 0) {
                 if (arg_count == 1) {
+                    for (int i = 0; i < MAX_PATHS; i++) {
+                        PATH[i] = NULL;
+                    }
                     printf("wish> ");
                     continue;
                 } else {
@@ -104,7 +103,13 @@ int main(int argc, char* argv[]){
                         if (len > 0 && args[j][len-1] != '/'){
                             strcat(args[j], "/");
                         }
-                        PATH[j - 1] = args[j];
+                        // printf("Here it is %s\n",args[j]);
+                        char *absolute_path = strcat(realpath(args[j], NULL), "/");
+                        if (absolute_path != NULL) {
+                            PATH[j - 1] = absolute_path;
+                        } else {
+                            write(STDERR_FILENO, error_message, strlen(error_message));
+                        }
                     }
                 }
             } else {
@@ -137,6 +142,10 @@ int main(int argc, char* argv[]){
                 token = strtok(NULL, " ");
             }
 
+            if (args[0][0] == '#') {
+                continue;
+            }
+
             if (strcmp(args[0], "exit") == 0) {
                 if (arg_count > 1) {
                     write(STDERR_FILENO, error_message, strlen(error_message));
@@ -156,7 +165,9 @@ int main(int argc, char* argv[]){
                 }
             } else if (strcmp(args[0], "path") == 0) {
                 if (arg_count == 1) {
-                    printf("wish> ");
+                    for (int i = 0; i < MAX_PATHS; i++) {
+                        PATH[i] = NULL;
+                    }
                     continue;
                 } else {
                     // Clear existing PATH
@@ -170,7 +181,12 @@ int main(int argc, char* argv[]){
                         if (len > 0 && args[j][len-1] != '/'){
                             strcat(args[j], "/");
                         }
-                        PATH[j - 1] = args[j];
+                        char *absolute_path = strcat(realpath(args[j], NULL), "/");
+                        if (absolute_path != NULL) {
+                            PATH[j - 1] = absolute_path;
+                        } else {
+                            write(STDERR_FILENO, error_message, strlen(error_message));
+                        }
                     }
                 }
             } else {
