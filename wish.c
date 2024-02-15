@@ -9,6 +9,18 @@
 #define MAX_PATH_LENGTH 256
 #define MAX_ARGS 32
 
+typedef struct shell_info
+{
+	char *commands[100];
+	int cur_cmd;
+}shell_info;
+
+shell_info shell;
+
+void initialize_shell(void){
+	shell.cur_cmd = 0;
+}
+
 void execute_command(char *args[], char *PATH[], int outputRedirect, char *filename, char *error_message) {
     pid_t pid = fork();
 
@@ -32,6 +44,7 @@ void execute_command(char *args[], char *PATH[], int outputRedirect, char *filen
                             // Failed to open file
                             write(STDERR_FILENO, error_message, strlen(error_message));
                             exit(0);
+                            // continue;
                         }
 
                         // Redirect stdout and stderr to the file
@@ -88,16 +101,32 @@ void handle_path(char *args[], char *PATH[], char *error_message) {
         char *absolute_path = strcat(realpath(args[j], NULL), "/");
         if (absolute_path != NULL) {
             PATH[j - 1] = absolute_path;
+            // printf("%s\n",absolute_path);
         } else {
             write(STDERR_FILENO, error_message, strlen(error_message));
         }
     }
 }
 
+int separate_cmd(char cmd[]) {
+	char *command = strtok(cmd, "&");
+	int k = 0;
+	while (command != NULL)
+	{
+		shell.commands[k] = command;
+		command = strtok(NULL, "&");
+		k++;
+	}
+	return k;
+}
+
 int main(int argc, char *argv[]) {
     char error_message[] = "An error has occurred\n";
     char *PATH[MAX_PATHS] = {"/bin/"};
     char buffer[BUFFER_SIZE];
+    int num_cmd = 0;
+
+    initialize_shell();
 
     if (argc > 2) {
         write(STDERR_FILENO, error_message, strlen(error_message));
@@ -126,77 +155,94 @@ int main(int argc, char *argv[]) {
 
         // Remove newline character from the end of the input
         buffer[strcspn(buffer, "\n")] = '\0';
+        if (strlen(buffer) == 0)
+		{
+			continue;
+		}
 
         char *token;
         char *args[MAX_ARGS] = {NULL}; // Initialize args with NULL pointers
         int arg_count = 0;
 
-        // strtok() returns a pointer
-        token = strtok(buffer, " \t\n");
-        while (token != NULL && arg_count < MAX_ARGS - 1) {
-            args[arg_count++] = token;
-            token = strtok(NULL, " \t\n");
-        }
+        num_cmd = separate_cmd(buffer);
+        shell.cur_cmd = 0;
 
-        // Check for redirection
-        int multipleFiles = 0;
-        int outputRedirect = 0;
-        char *filename;
-        for (int j = 0; args[j] != NULL; j++)
-        {
-            if ((strcmp(args[j], ">") == 0) && (strcmp(args[0], ">") != 0))
-            {
-                if (args[j + 2] != NULL)
-                {
-                    multipleFiles = 1;
-                }
-                else
-                {
-                    outputRedirect = 1;
-                    filename = args[j + 1];
-                    args[j] = NULL;
-                }
+        while (shell.cur_cmd < num_cmd) {
+            // strtok() returns a pointer
+            token = strtok(shell.commands[shell.cur_cmd], " \t\n");
+
+            while (token != NULL) {
+                args[arg_count++] = token;
+                token = strtok(NULL, " \t\n");
             }
-            else
-            {
-                char *pos = strchr(args[j], '>');
 
-                if (pos)
+            if (args[0] == NULL) {
+                shell.cur_cmd++;
+                continue;
+            }
+
+            // Check for redirection
+            int multipleFiles = 0;
+            int outputRedirect = 0;
+            char *filename;
+            for (int j = 0; args[j] != NULL; j++)
+            {
+                if ((strcmp(args[j], ">") == 0) && (strcmp(args[0], ">") != 0))
                 {
-                    if (args[j + 1] != NULL)
+                    if (args[j + 2] != NULL)
                     {
                         multipleFiles = 1;
                     }
                     else
                     {
-                        char *arg = strtok(args[j], ">");
-                        args[j] = arg;
                         outputRedirect = 1;
-                        arg = strtok(NULL, ">");
-                        filename = arg;
+                        filename = args[j + 1];
+                        args[j] = NULL;
+                    }
+                }
+                else
+                {
+                    char *pos = strchr(args[j], '>');
+
+                    if (pos)
+                    {
+                        if (args[j + 1] != NULL)
+                        {
+                            multipleFiles = 1;
+                        }
+                        else
+                        {
+                            char *arg = strtok(args[j], ">");
+                            args[j] = arg;
+                            outputRedirect = 1;
+                            arg = strtok(NULL, ">");
+                            filename = arg;
+                        }
                     }
                 }
             }
-        }
 
-        if (multipleFiles) {
-            write(STDERR_FILENO, error_message, strlen(error_message));
-            exit(0);
-        }
-
-        if (strcmp(args[0], "exit") == 0) {
-            if (arg_count > 1) {
+            if (multipleFiles) {
+                shell.cur_cmd++;
                 write(STDERR_FILENO, error_message, strlen(error_message));
-            } else {
                 exit(0);
             }
-            break;
-        } else if (strcmp(args[0], "cd") == 0) {
-            handle_cd(args, error_message);
-        } else if (strcmp(args[0], "path") == 0) {
-            handle_path(args, PATH, error_message);
-        } else {
-            execute_command(args, PATH, outputRedirect, filename, error_message);
+
+            if (strcmp(args[0], "exit") == 0) {
+                if (arg_count > 1) {
+                    write(STDERR_FILENO, error_message, strlen(error_message));
+                } else {
+                    exit(0);
+                }
+                break;
+            } else if (strcmp(args[0], "cd") == 0) {
+                handle_cd(args, error_message);
+            } else if (strcmp(args[0], "path") == 0) {
+                handle_path(args, PATH, error_message);
+            } else {
+                execute_command(args, PATH, outputRedirect, filename, error_message);
+            }
+            shell.cur_cmd++;
         }
     }
 
