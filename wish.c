@@ -44,7 +44,6 @@ void execute_command(char *args[], char *PATH[], int outputRedirect, char *filen
                             // Failed to open file
                             write(STDERR_FILENO, error_message, strlen(error_message));
                             exit(0);
-                            // continue;
                         }
 
                         // Redirect stdout and stderr to the file
@@ -71,8 +70,6 @@ void execute_command(char *args[], char *PATH[], int outputRedirect, char *filen
         }
     } else {
         // Parent process
-        int status;
-        waitpid(pid, &status, 0);
     }
 }
 
@@ -92,16 +89,15 @@ void handle_path(char *args[], char *PATH[], char *error_message) {
     memset(PATH, 0, MAX_PATHS * sizeof(char *));
     // Set new PATH
     for (int j = 1; args[j] != NULL && j < MAX_PATHS; j++) {
+        char *test_path = strdup(args[j]);
         // Append '/' to the end of the directory path
         size_t len = strlen(args[j]);
         if (len > 0 && args[j][len - 1] != '/') {
-            strcat(args[j], "/");
+            strcat(test_path, "/");
         }
-
         char *absolute_path = strcat(realpath(args[j], NULL), "/");
         if (absolute_path != NULL) {
             PATH[j - 1] = absolute_path;
-            // printf("%s\n",absolute_path);
         } else {
             write(STDERR_FILENO, error_message, strlen(error_message));
         }
@@ -161,16 +157,15 @@ int main(int argc, char *argv[]) {
 		}
 
         char *token;
-        char *args[MAX_ARGS] = {NULL}; // Initialize args with NULL pointers
-        int arg_count = 0;
 
         num_cmd = separate_cmd(buffer);
         shell.cur_cmd = 0;
 
         while (shell.cur_cmd < num_cmd) {
             // strtok() returns a pointer
+            char *args[MAX_ARGS] = {NULL}; // Initialize args with NULL pointers
+            int arg_count = 0;
             token = strtok(shell.commands[shell.cur_cmd], " \t\n");
-
             while (token != NULL) {
                 args[arg_count++] = token;
                 token = strtok(NULL, " \t\n");
@@ -244,6 +239,7 @@ int main(int argc, char *argv[]) {
             }
             shell.cur_cmd++;
         }
+        while (wait(NULL) > 0);
     }
 
     if (argc == 2) {
